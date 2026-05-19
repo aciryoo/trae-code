@@ -1,36 +1,53 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+interface GeneratedImage {
+  id: string;
+  url: string;
+  prompt: string;
+  timestamp: number;
+}
+
 interface AppState {
+  // API 配置
   gptApiUrl: string;
   gptApiKey: string;
   doubaoApiUrl: string;
   doubaoApiKey: string;
-  prompt: string;
+  
+  // 图片生成相关
+  imagePrompt: string;
   imageSize: string;
   imageStyle: string;
-  videoDuration: number;
-  generatedImageUrl: string | null;
-  generatedVideoUrl: string | null;
+  generatedImages: GeneratedImage[];
   isGeneratingImage: boolean;
+  imageError: string | null;
+  
+  // 视频生成相关
+  selectedImage: string | null;
+  videoDuration: number;
   isGeneratingVideo: boolean;
-  currentStep: 'idle' | 'image' | 'video' | 'complete' | 'error';
-  errorMessage: string | null;
+  generatedVideoUrl: string | null;
+  videoError: string | null;
+  
+  // Actions
   setGptApiUrl: (url: string) => void;
   setGptApiKey: (key: string) => void;
   setDoubaoApiUrl: (url: string) => void;
   setDoubaoApiKey: (key: string) => void;
-  setPrompt: (prompt: string) => void;
+  setImagePrompt: (prompt: string) => void;
   setImageSize: (size: string) => void;
   setImageStyle: (style: string) => void;
+  setSelectedImage: (url: string | null) => void;
   setVideoDuration: (duration: number) => void;
-  setGeneratedImageUrl: (url: string | null) => void;
-  setGeneratedVideoUrl: (url: string | null) => void;
   setIsGeneratingImage: (isGenerating: boolean) => void;
   setIsGeneratingVideo: (isGenerating: boolean) => void;
-  setCurrentStep: (step: 'idle' | 'image' | 'video' | 'complete' | 'error') => void;
-  setErrorMessage: (message: string | null) => void;
-  resetResults: () => void;
+  setImageError: (error: string | null) => void;
+  setVideoError: (error: string | null) => void;
+  setGeneratedVideoUrl: (url: string | null) => void;
+  addGeneratedImage: (url: string, prompt: string) => void;
+  clearGeneratedImages: () => void;
+  resetVideoGeneration: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -40,35 +57,51 @@ export const useAppStore = create<AppState>()(
       gptApiKey: '',
       doubaoApiUrl: '',
       doubaoApiKey: '',
-      prompt: '',
+      imagePrompt: '',
       imageSize: '1024x1024',
       imageStyle: 'vivid',
-      videoDuration: 5,
-      generatedImageUrl: null,
-      generatedVideoUrl: null,
+      generatedImages: [],
       isGeneratingImage: false,
+      imageError: null,
+      selectedImage: null,
+      videoDuration: 5,
       isGeneratingVideo: false,
-      currentStep: 'idle',
-      errorMessage: null,
+      generatedVideoUrl: null,
+      videoError: null,
+      
       setGptApiUrl: (url) => set({ gptApiUrl: url }),
       setGptApiKey: (key) => set({ gptApiKey: key }),
       setDoubaoApiUrl: (url) => set({ doubaoApiUrl: url }),
       setDoubaoApiKey: (key) => set({ doubaoApiKey: key }),
-      setPrompt: (prompt) => set({ prompt }),
+      setImagePrompt: (prompt) => set({ imagePrompt: prompt }),
       setImageSize: (size) => set({ imageSize: size }),
       setImageStyle: (style) => set({ imageStyle: style }),
+      setSelectedImage: (url) => set({ selectedImage: url }),
       setVideoDuration: (duration) => set({ videoDuration: duration }),
-      setGeneratedImageUrl: (url) => set({ generatedImageUrl: url }),
-      setGeneratedVideoUrl: (url) => set({ generatedVideoUrl: url }),
       setIsGeneratingImage: (isGenerating) => set({ isGeneratingImage: isGenerating }),
       setIsGeneratingVideo: (isGenerating) => set({ isGeneratingVideo: isGenerating }),
-      setCurrentStep: (step) => set({ currentStep: step }),
-      setErrorMessage: (message) => set({ errorMessage: message }),
-      resetResults: () => set({
-        generatedImageUrl: null,
+      setImageError: (error) => set({ imageError: error }),
+      setVideoError: (error) => set({ videoError: error }),
+      setGeneratedVideoUrl: (url) => set({ generatedVideoUrl: url }),
+      
+      addGeneratedImage: (url, prompt) => set((state) => ({
+        generatedImages: [
+          {
+            id: Date.now().toString(),
+            url,
+            prompt,
+            timestamp: Date.now()
+          },
+          ...state.generatedImages
+        ]
+      })),
+      
+      clearGeneratedImages: () => set({ generatedImages: [] }),
+      
+      resetVideoGeneration: () => set({
         generatedVideoUrl: null,
-        currentStep: 'idle',
-        errorMessage: null
+        videoError: null,
+        isGeneratingVideo: false
       })
     }),
     {

@@ -6,12 +6,11 @@ export function useGeneration() {
 
   const generateImage = async () => {
     try {
-      store.setCurrentStep('image');
       store.setIsGeneratingImage(true);
-      store.setErrorMessage(null);
+      store.setImageError(null);
 
       const response = await axios.post('/api/generate/image', {
-        prompt: store.prompt,
+        prompt: store.imagePrompt,
         size: store.imageSize,
         style: store.imageStyle,
         apiUrl: store.gptApiUrl,
@@ -19,28 +18,32 @@ export function useGeneration() {
       });
 
       if (response.data.success && response.data.imageUrl) {
-        store.setGeneratedImageUrl(response.data.imageUrl);
+        store.addGeneratedImage(response.data.imageUrl, store.imagePrompt);
         return response.data.imageUrl;
       } else {
         throw new Error(response.data.error || 'Failed to generate image');
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || error.message || 'Failed to generate image';
-      store.setErrorMessage(errorMsg);
-      store.setCurrentStep('error');
+      store.setImageError(errorMsg);
       throw error;
     } finally {
       store.setIsGeneratingImage(false);
     }
   };
 
-  const generateVideo = async (imageUrl: string) => {
+  const generateVideo = async () => {
+    if (!store.selectedImage) {
+      store.setVideoError('请先选择一张图片');
+      return;
+    }
+
     try {
-      store.setCurrentStep('video');
       store.setIsGeneratingVideo(true);
+      store.setVideoError(null);
 
       const response = await axios.post('/api/generate/video', {
-        imageUrl,
+        imageUrl: store.selectedImage,
         apiUrl: store.doubaoApiUrl,
         apiKey: store.doubaoApiKey,
         duration: store.videoDuration
@@ -48,53 +51,21 @@ export function useGeneration() {
 
       if (response.data.success && response.data.videoUrl) {
         store.setGeneratedVideoUrl(response.data.videoUrl);
-        store.setCurrentStep('complete');
         return response.data.videoUrl;
       } else {
         throw new Error(response.data.error || 'Failed to generate video');
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || error.message || 'Failed to generate video';
-      store.setErrorMessage(errorMsg);
-      store.setCurrentStep('error');
+      store.setVideoError(errorMsg);
       throw error;
     } finally {
       store.setIsGeneratingVideo(false);
     }
   };
 
-  const startGeneration = async () => {
-    try {
-      store.resetResults();
-      
-      if (!store.prompt.trim()) {
-        store.setErrorMessage('Please enter a prompt');
-        store.setCurrentStep('error');
-        return;
-      }
-      
-      if (!store.gptApiUrl || !store.gptApiKey) {
-        store.setErrorMessage('Please configure GPT image API');
-        store.setCurrentStep('error');
-        return;
-      }
-      
-      if (!store.doubaoApiUrl || !store.doubaoApiKey) {
-        store.setErrorMessage('Please configure Doubao video API');
-        store.setCurrentStep('error');
-        return;
-      }
-
-      const imageUrl = await generateImage();
-      await generateVideo(imageUrl);
-    } catch (error) {
-      console.error('Generation failed:', error);
-    }
-  };
-
   return {
     generateImage,
-    generateVideo,
-    startGeneration
+    generateVideo
   };
 }
